@@ -1,4 +1,4 @@
-import { Download, Table2, BarChart3 } from "lucide-react";
+import { Download } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -14,81 +14,44 @@ import {
   YAxis,
 } from "recharts";
 import type { AggregationRow, ChartType, EventRow } from "../types";
-import { chartLabel } from "../utils/format";
+import { chartLabel, formatDateTime } from "../utils/format";
 
 const COLORS = ["#4f6bff", "#7c3aed", "#0ea5e9", "#22c55e", "#f59e0b", "#ef4444"];
 
 interface ChartPanelProps {
-  activeTab: "chart" | "table";
   aggregations: AggregationRow[];
   results: EventRow[];
   chartType: ChartType;
-  onTabChange: (tab: "chart" | "table") => void;
   onExport: () => void;
 }
 
-export function ChartPanel({ activeTab, aggregations, results, chartType, onTabChange, onExport }: ChartPanelProps) {
-  const data = aggregations.map((row) => ({
-    name: String(row.key ?? "unknown"),
-    count: Number(row.count || 0),
-  }));
+export function ChartPanel({ aggregations, results, chartType, onExport }: ChartPanelProps) {
+  const data = aggregations
+    .map((row) => ({
+      name: String(row.key ?? row.value_as_string ?? row.aggregation ?? "unknown"),
+      count: Number(row.count ?? row.value ?? 0),
+    }))
+    .filter((row) => Number.isFinite(row.count));
+  const hasChart = chartType !== "table" && data.length > 0;
 
   return (
     <section className="chart-panel">
-      <header className="panel-header with-tabs">
-        <div className="tabs">
-          <button className={activeTab === "chart" ? "active" : ""} type="button" onClick={() => onTabChange("chart")}>
-            <BarChart3 size={16} />
-            Chart
-          </button>
-          <button className={activeTab === "table" ? "active" : ""} type="button" onClick={() => onTabChange("table")}>
-            <Table2 size={16} />
-            Table
-          </button>
-        </div>
+      <header className="panel-header">
+        <h2>{chartLabel(chartType)}</h2>
         <button className="secondary-button" type="button" onClick={onExport}>
           <Download size={16} />
           Export CSV
         </button>
       </header>
 
-      {activeTab === "chart" ? (
-        <div className="chart-area">
-          <h3>{chartLabel(chartType)} from aggregations</h3>
-          {data.length ? <ChartRenderer chartType={chartType} data={data} /> : <EmptyChart />}
+      {chartType === "table" ? (
+        <div className="table-wrap">
+          {aggregations.length ? <AggregationTable rows={aggregations} /> : <EventTable rows={results} />}
         </div>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Host</th>
-                <th>User</th>
-                <th>IP</th>
-                <th>Type</th>
-                <th>Severity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.length ? (
-                results.slice(0, 12).map((row, index) => (
-                  <tr key={String(row.id || index)}>
-                    <td>{row.timestamp || "-"}</td>
-                    <td>{row.host || "-"}</td>
-                    <td>{row.user || "-"}</td>
-                    <td>{row.ip || row.src_ip || "-"}</td>
-                    <td>{row.event_type || "-"}</td>
-                    <td>{row.severity || "-"}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6}>Run a search to populate table results.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="chart-area">
+          <h3>{chartLabel(chartType)} from aggregations</h3>
+          {hasChart ? <ChartRenderer chartType={chartType} data={data} /> : <EmptyChart chartType={chartType} />}
         </div>
       )}
     </section>
@@ -96,12 +59,14 @@ export function ChartPanel({ activeTab, aggregations, results, chartType, onTabC
 }
 
 function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<{ name: string; count: number }> }) {
+  const chartData = chartType === "line_chart" ? [...data].sort((a, b) => Date.parse(a.name) - Date.parse(b.name)) : data;
+
   if (chartType === "pie_chart") {
     return (
-      <ResponsiveContainer width="100%" height={260}>
+      <ResponsiveContainer width="100%" height={210}>
         <PieChart>
-          <Pie data={data} dataKey="count" nameKey="name" outerRadius={95} label>
-            {data.map((entry, index) => (
+          <Pie data={chartData} dataKey="count" nameKey="name" outerRadius={74} label>
+            {chartData.map((entry, index) => (
               <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
@@ -113,10 +78,10 @@ function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<
 
   if (chartType === "line_chart") {
     return (
-      <ResponsiveContainer width="100%" height={260}>
-        <LineChart data={data}>
+      <ResponsiveContainer width="100%" height={210}>
+        <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" />
+          <XAxis dataKey="name" minTickGap={18} />
           <YAxis allowDecimals={false} />
           <Tooltip />
           <Line type="monotone" dataKey="count" stroke="#4f6bff" strokeWidth={3} dot />
@@ -126,14 +91,14 @@ function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<
   }
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={data}>
+    <ResponsiveContainer width="100%" height={210}>
+      <BarChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" />
+        <XAxis dataKey="name" minTickGap={14} />
         <YAxis allowDecimals={false} />
         <Tooltip />
         <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-          {data.map((entry, index) => (
+          {chartData.map((entry, index) => (
             <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
           ))}
         </Bar>
@@ -142,6 +107,64 @@ function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<
   );
 }
 
-function EmptyChart() {
-  return <div className="empty-state">No aggregation buckets returned for this query.</div>;
+function AggregationTable({ rows }: { rows: AggregationRow[] }) {
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Aggregation</th>
+          <th>Key</th>
+          <th>Count / Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, index) => (
+          <tr key={`${row.aggregation || "agg"}-${String(row.key || index)}`}>
+            <td>{row.aggregation || "-"}</td>
+            <td>{String(row.key ?? row.value_as_string ?? "-")}</td>
+            <td>{String(row.count ?? row.value ?? "-")}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function EventTable({ rows }: { rows: EventRow[] }) {
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Host</th>
+          <th>User</th>
+          <th>IP</th>
+          <th>Type</th>
+          <th>Severity</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length ? (
+          rows.map((row, index) => (
+            <tr key={String(row.id || index)}>
+              <td>{formatDateTime(row.timestamp)}</td>
+              <td>{row.host || "-"}</td>
+              <td>{row.user || "-"}</td>
+              <td>{row.ip || row.src_ip || "-"}</td>
+              <td>{row.event_type || "-"}</td>
+              <td>{row.severity || "-"}</td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan={6}>Run a search to populate table results.</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function EmptyChart({ chartType }: { chartType: ChartType }) {
+  return <div className="empty-state">No aggregation buckets returned for this {chartLabel(chartType).toLowerCase()} query.</div>;
 }

@@ -8,7 +8,7 @@ export function searchEvents(payload: SearchRequest): Promise<SearchResponse> {
     method: "POST",
     body: JSON.stringify({
       page: 0,
-      pageSize: 50,
+      pageSize: 5000,
       ...payload,
     }),
   });

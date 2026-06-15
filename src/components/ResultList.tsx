@@ -1,18 +1,22 @@
 import { LockKeyhole, MoreVertical, UserRound } from "lucide-react";
 import type { EventRow } from "../types";
-import { formatDateTime, severityLabel } from "../utils/format";
+import { formatDateTime, formatNumber, severityLabel } from "../utils/format";
 
 interface ResultListProps {
   results: EventRow[];
+  totalCount: number;
   selectedId?: string | null;
   onSelect: (row: EventRow) => void;
 }
 
-export function ResultList({ results, selectedId, onSelect }: ResultListProps) {
+export function ResultList({ results, totalCount, selectedId, onSelect }: ResultListProps) {
   return (
     <section className="results-panel">
       <header className="panel-header">
-        <h2>Results ({results.length} events)</h2>
+        <h2>Results</h2>
+        <span className="sort-label">
+          Showing {formatNumber(results.length)} of {formatNumber(totalCount)} events
+        </span>
         <span className="sort-label">Sort by: @timestamp (desc)</span>
       </header>
       <div className="result-list">

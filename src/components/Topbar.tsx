@@ -9,6 +9,13 @@ interface TopbarProps {
 export function Topbar({ theme, onToggleTheme }: TopbarProps) {
   return (
     <header className="topbar">
+      <div className="topbar-system-status">
+        <span className="dot" />
+        <span>
+          <small>System Status</small>
+          Operational
+        </span>
+      </div>
       <div className="topbar-spacer" />
       <div className="provider-status">
         <span className="dot" />

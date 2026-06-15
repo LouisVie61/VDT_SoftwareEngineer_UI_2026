@@ -2,75 +2,67 @@ import {
   Bookmark,
   ChevronDown,
   History,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
-    <aside className="sidebar">
-      <div className="brand">
-        <span className="brand-icon">
-          <ShieldCheck size={21} />
-        </span>
-        <span>AI Event Search</span>
+    <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+      <div className="sidebar-header">
+        <div className="brand">
+          <span className="brand-icon">
+            <ShieldCheck size={21} />
+          </span>
+          <span className="sidebar-label">AI Event Search</span>
+        </div>
+        <button className="sidebar-toggle" type="button" onClick={onToggle} aria-label="Toggle sidebar">
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+        </button>
       </div>
 
       <nav className="nav">
         <a className="nav-item active" href="#search">
           <Search size={18} />
-          Search
+          <span className="sidebar-label">Search</span>
         </a>
         <a className="nav-item" href="#history">
           <History size={18} />
-          History
+          <span className="sidebar-label">History</span>
         </a>
         <a className="nav-item" href="#saved">
           <Bookmark size={18} />
-          Saved Queries
+          <span className="sidebar-label">Saved Queries</span>
         </a>
         <a className="nav-item" href="#playbooks">
           <SlidersHorizontal size={18} />
-          Playbooks
-          <span className="soon">Soon</span>
+          <span className="sidebar-label">Playbooks</span>
+          <span className="soon sidebar-label">Soon</span>
         </a>
         <a className="nav-item" href="#settings">
           <Settings size={18} />
-          Settings
+          <span className="sidebar-label">Settings</span>
         </a>
       </nav>
 
       <div className="sidebar-spacer" />
 
-      <section className="system-card">
-        <p className="eyebrow success">System Status</p>
-        <div className="status-row">
-          <span className="dot" />
-          <strong>AI System: Operational</strong>
-        </div>
-        <div className="system-line">
-          <span>Elasticsearch</span>
-          <strong>Healthy</strong>
-        </div>
-        <div className="system-line">
-          <span>LLM Provider</span>
-          <strong>Gemini + Groq</strong>
-        </div>
-        <div className="system-line">
-          <span>Last Check</span>
-          <strong>10:24:30</strong>
-        </div>
-      </section>
-
       <div className="profile">
         <span className="avatar">AD</span>
-        <span>
+        <span className="sidebar-label">
           <strong>Analyst</strong>
           <small>analyst@demo.local</small>
         </span>
-        <ChevronDown size={16} />
+        <ChevronDown className="sidebar-label" size={16} />
       </div>
     </aside>
   );

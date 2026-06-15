@@ -11,7 +11,7 @@ import { Sidebar } from "./components/Sidebar";
 import { SummaryPanel } from "./components/SummaryPanel";
 import { Topbar } from "./components/Topbar";
 import { emptyDsl } from "./data/examples";
-import type { AggregationRow, ChartType, EventRow, QueryHistoryItem, SearchResponse, Theme } from "./types";
+import type { AggregationRow, EventRow, QueryHistoryItem, SearchResponse, Theme } from "./types";
 
 const DEFAULT_QUERY = "Đếm số lần login thất bại theo từng user trong 7 ngày qua";
 
@@ -29,10 +29,10 @@ export default function App() {
   const [response, setResponse] = useState<SearchResponse | null>(null);
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"chart" | "table">("chart");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -71,7 +71,7 @@ export default function App() {
     const startedAt = performance.now();
 
     try {
-      const data = await searchEvents({ question: trimmed, page: 0, pageSize: 50 });
+      const data = await searchEvents({ question: trimmed, page: 0, pageSize: 5000 });
       setResponse(data);
       setElapsedMs(performance.now() - startedAt);
       setStatus("success");
@@ -95,10 +95,13 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((current) => !current)} />
       <div className="app-content">
-        <Topbar theme={theme} onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))} />
+        <Topbar
+          theme={theme}
+          onToggleTheme={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+        />
         <main className="dashboard">
           <section className="main-column">
             <SearchHero
@@ -115,20 +118,25 @@ export default function App() {
               </div>
             ) : null}
             <MetricCards totalCount={response?.totalCount || 0} elapsedMs={elapsedMs} chartType={chartType} status={status} />
-            <div className="insight-grid">
-              <SummaryPanel summary={response?.summary || ""} />
-              <ChartPanel
-                activeTab={activeTab}
-                aggregations={aggregations}
-                results={results}
-                chartType={chartType as ChartType}
-                onTabChange={setActiveTab}
-                onExport={handleExport}
-              />
-            </div>
-            <div className="content-grid">
-              <DslPanel dsl={response?.generatedDsl || emptyDsl} />
-              <ResultList results={results} selectedId={selectedEvent?.id ? String(selectedEvent.id) : null} onSelect={setSelectedEvent} />
+            <div className="workbench-grid">
+              <div className="left-stack">
+                <SummaryPanel summary={response?.summary || ""} />
+                <DslPanel dsl={response?.generatedDsl || emptyDsl} />
+              </div>
+              <div className="right-stack">
+                <ChartPanel
+                  aggregations={aggregations}
+                  results={results}
+                  chartType={chartType}
+                  onExport={handleExport}
+                />
+                <ResultList
+                  results={results}
+                  totalCount={response?.totalCount || results.length}
+                  selectedId={selectedEvent?.id ? String(selectedEvent.id) : null}
+                  onSelect={setSelectedEvent}
+                />
+              </div>
             </div>
           </section>
           <RightPanel history={history} selectedEvent={selectedEvent} onHistoryClick={setQuestion} />

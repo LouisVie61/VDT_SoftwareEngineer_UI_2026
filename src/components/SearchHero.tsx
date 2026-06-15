@@ -32,13 +32,12 @@ export function SearchHero({ question, isLoading, onQuestionChange, onSubmit, on
             <X size={17} />
           </button>
         ) : null}
-        <button className="primary-button" type="submit" disabled={isLoading || !question.trim()}>
+        <button className="primary-button search-submit" type="submit" disabled={isLoading || !question.trim()} aria-label="Run search">
           {isLoading ? <Loader2 className="spin" size={17} /> : <Play size={17} />}
-          Run Search
         </button>
       </form>
       <div className="examples">
-        <span>Example:</span>
+        <span>Suggestions:</span>
         {exampleQueries.map((query) => (
           <button key={query} type="button" onClick={() => onQuestionChange(query)}>
             {query}
