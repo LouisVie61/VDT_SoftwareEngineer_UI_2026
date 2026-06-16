@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { AggregationRow, ChartType, EventRow } from "../types";
+import type { AggregationRow, ChartType, EventRow, SearchStatus } from "../types";
 import { chartLabel, formatDateTime } from "../utils/format";
 
 const COLORS = ["#4f6bff", "#7c3aed", "#0ea5e9", "#22c55e", "#f59e0b", "#ef4444"];
@@ -22,11 +22,13 @@ interface ChartPanelProps {
   aggregations: AggregationRow[];
   results: EventRow[];
   chartType: ChartType;
+  status: SearchStatus;
   onExport: () => void;
 }
 
-export function ChartPanel({ aggregations, results, chartType, onExport }: ChartPanelProps) {
-  const data = aggregations
+export function ChartPanel({ aggregations, results, chartType, status, onExport }: ChartPanelProps) {
+  const visibleBuckets = aggregations.slice(0, 10);
+  const data = visibleBuckets
     .map((row) => ({
       name: String(row.key ?? row.value_as_string ?? row.aggregation ?? "unknown"),
       count: Number(row.count ?? row.value ?? 0),
@@ -38,15 +40,17 @@ export function ChartPanel({ aggregations, results, chartType, onExport }: Chart
     <section className="chart-panel">
       <header className="panel-header">
         <h2>{chartLabel(chartType)}</h2>
-        <button className="secondary-button" type="button" onClick={onExport}>
+        <button className="secondary-button" type="button" onClick={onExport} disabled={status === "loading"}>
           <Download size={16} />
-          Export CSV
+          Export Events CSV
         </button>
       </header>
 
-      {chartType === "table" ? (
+      {status === "loading" ? (
+        <LoadingChart />
+      ) : chartType === "table" ? (
         <div className="table-wrap">
-          {aggregations.length ? <AggregationTable rows={aggregations} /> : <EventTable rows={results} />}
+          {visibleBuckets.length ? <AggregationTable rows={visibleBuckets} /> : <EventTable rows={results} />}
         </div>
       ) : (
         <div className="chart-area">
@@ -55,6 +59,16 @@ export function ChartPanel({ aggregations, results, chartType, onExport }: Chart
         </div>
       )}
     </section>
+  );
+}
+
+function LoadingChart() {
+  return (
+    <div className="chart-area loading-state">
+      <Loader2 className="spin" size={22} />
+      <strong>Running query</strong>
+      <span>Waiting for Elasticsearch results and aggregation buckets...</span>
+    </div>
   );
 }
 

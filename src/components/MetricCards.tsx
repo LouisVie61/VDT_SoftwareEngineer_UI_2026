@@ -1,12 +1,12 @@
 import { BarChart3, CheckCircle2, Clock3, Database } from "lucide-react";
-import type { ChartType } from "../types";
+import type { ChartType, SearchStatus } from "../types";
 import { chartLabel, formatDuration, formatNumber } from "../utils/format";
 
 interface MetricCardsProps {
   totalCount: number;
   elapsedMs: number | null;
   chartType: ChartType;
-  status: "idle" | "loading" | "success" | "error";
+  status: SearchStatus;
 }
 
 export function MetricCards({ totalCount, elapsedMs, chartType, status }: MetricCardsProps) {

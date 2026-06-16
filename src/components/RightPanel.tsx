@@ -46,17 +46,10 @@ export function RightPanel({ history, selectedEvent, onHistoryClick }: RightPane
 
 function EventDetails({ event }: { event: EventRow }) {
   const severity = severityLabel(event.severity);
-  const fields = [
-    ["@timestamp", formatDateTime(event.timestamp)],
-    ["host", event.host || "-"],
-    ["ip", event.ip || event.src_ip || "-"],
-    ["user", event.user || "-"],
-    ["event_type", event.event_type || "-"],
-    ["source", event.source || "-"],
-    ["event_id", event.id || "-"],
-    ["severity", event.severity || "-"],
-    ["message", event.message || event.raw || "-"],
-  ];
+  const fields = Object.entries(event).map(([label, value]) => [
+    label === "timestamp" ? "@timestamp" : label,
+    label === "timestamp" ? formatDateTime(String(value || "")) : formatDetailValue(value),
+  ]);
 
   return (
     <div className="event-details">
@@ -77,4 +70,14 @@ function EventDetails({ event }: { event: EventRow }) {
       </button>
     </div>
   );
+}
+
+function formatDetailValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }

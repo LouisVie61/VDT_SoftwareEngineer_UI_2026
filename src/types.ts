@@ -2,6 +2,8 @@ export type ChartType = "table" | "line_chart" | "bar_chart" | "pie_chart";
 
 export type Theme = "dark" | "light";
 
+export type SearchStatus = "idle" | "loading" | "success" | "error";
+
 export interface SearchRequest {
   question: string;
   page?: number;
@@ -14,6 +16,8 @@ export interface SearchRequest {
   host?: string;
   ip?: string;
 }
+
+export type SearchFilters = Omit<SearchRequest, "question" | "page" | "pageSize">;
 
 export interface EventRow {
   id?: string | null;
