@@ -1,4 +1,4 @@
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Maximize2, Minimize2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -23,27 +23,40 @@ interface ChartPanelProps {
   results: EventRow[];
   chartType: ChartType;
   status: SearchStatus;
+  expanded: boolean;
   onExport: () => void;
+  onExpandedChange: (expanded: boolean) => void;
 }
 
-export function ChartPanel({ aggregations, results, chartType, status, onExport }: ChartPanelProps) {
-  const visibleBuckets = aggregations.slice(0, 10);
-  const data = visibleBuckets
+export function ChartPanel({ aggregations, results, chartType, status, expanded, onExport, onExpandedChange }: ChartPanelProps) {
+  const renderPanel = (isExpanded: boolean) => {
+    const visibleBuckets = isExpanded ? aggregations : aggregations.slice(0, 10);
+    const data = visibleBuckets
     .map((row) => ({
       name: String(row.key ?? row.value_as_string ?? row.aggregation ?? "unknown"),
       count: Number(row.count ?? row.value ?? 0),
     }))
     .filter((row) => Number.isFinite(row.count));
-  const hasChart = chartType !== "table" && data.length > 0;
+    const hasChart = chartType !== "table" && data.length > 0;
+    const bucketLabel = aggregations.length > visibleBuckets.length ? `${visibleBuckets.length} of ${aggregations.length} buckets` : `${visibleBuckets.length} buckets`;
 
-  return (
-    <section className="chart-panel">
+    return (
+      <section className={`chart-panel ${isExpanded ? "chart-panel-expanded" : ""}`}>
       <header className="panel-header">
-        <h2>{chartLabel(chartType)}</h2>
-        <button className="secondary-button" type="button" onClick={onExport} disabled={status === "loading"}>
-          <Download size={16} />
-          Export Events CSV
-        </button>
+        <div className="panel-title-stack">
+          <h2>{chartLabel(chartType)}</h2>
+          <span>{bucketLabel}</span>
+        </div>
+        <div className="panel-actions">
+          <button className="secondary-button compact" type="button" onClick={() => onExpandedChange(!isExpanded)} disabled={status === "loading"}>
+            {isExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isExpanded ? "Collapse" : "Expand"}
+          </button>
+          <button className="secondary-button compact" type="button" onClick={onExport} disabled={status === "loading"}>
+            <Download size={15} />
+            Export CSV
+          </button>
+        </div>
       </header>
 
       {status === "loading" ? (
@@ -55,10 +68,18 @@ export function ChartPanel({ aggregations, results, chartType, status, onExport 
       ) : (
         <div className="chart-area">
           <h3>{chartLabel(chartType)} from aggregations</h3>
-          {hasChart ? <ChartRenderer chartType={chartType} data={data} /> : <EmptyChart chartType={chartType} />}
+          {hasChart ? <ChartRenderer chartType={chartType} data={data} height={isExpanded ? 460 : 210} /> : <EmptyChart chartType={chartType} />}
         </div>
       )}
     </section>
+    );
+  };
+
+  return (
+    <>
+      {renderPanel(false)}
+      {expanded ? <div className="chart-expand-overlay">{renderPanel(true)}</div> : null}
+    </>
   );
 }
 
@@ -72,12 +93,12 @@ function LoadingChart() {
   );
 }
 
-function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<{ name: string; count: number }> }) {
+function ChartRenderer({ chartType, data, height }: { chartType: ChartType; data: Array<{ name: string; count: number }>; height: number }) {
   const chartData = chartType === "line_chart" ? [...data].sort((a, b) => Date.parse(a.name) - Date.parse(b.name)) : data;
 
   if (chartType === "pie_chart") {
     return (
-      <ResponsiveContainer width="100%" height={210}>
+      <ResponsiveContainer width="100%" height={height}>
         <PieChart>
           <Pie data={chartData} dataKey="count" nameKey="name" outerRadius={74} label>
             {chartData.map((entry, index) => (
@@ -92,7 +113,7 @@ function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<
 
   if (chartType === "line_chart") {
     return (
-      <ResponsiveContainer width="100%" height={210}>
+      <ResponsiveContainer width="100%" height={height}>
         <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="name" minTickGap={18} />
@@ -105,7 +126,7 @@ function ChartRenderer({ chartType, data }: { chartType: ChartType; data: Array<
   }
 
   return (
-    <ResponsiveContainer width="100%" height={210}>
+    <ResponsiveContainer width="100%" height={height}>
       <BarChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
         <XAxis dataKey="name" minTickGap={14} />

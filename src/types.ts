@@ -8,6 +8,8 @@ export interface SearchRequest {
   question: string;
   page?: number;
   pageSize?: number;
+  sessionId?: string;
+  historySelectionId?: string;
   from?: string;
   to?: string;
   severity?: string;
@@ -43,6 +45,47 @@ export interface AggregationRow {
   [key: string]: unknown;
 }
 
+export type TemplateType = "SIMPLE_SEARCH" | "TERMS_AGGREGATION" | "TIME_AGGREGATION";
+
+export interface SearchIntent {
+  intent: TemplateType;
+  textQuery?: string | null;
+  filters?: Record<string, string>;
+  groupBy?: string | null;
+  metric?: string | null;
+  topN?: number | null;
+  timeBucket?: string | null;
+  overrideIntent?: string | null;
+  overrideReason?: string | null;
+}
+
+export interface TemplateSelection {
+  type: TemplateType;
+  groupBy?: string | null;
+  size: number;
+  reason?: string | null;
+}
+
+export interface SearchWarning {
+  code: string;
+  message: string;
+}
+
+export interface SearchConfirmation {
+  confirmationId: string;
+  intent: SearchIntent;
+  templateSelection: TemplateSelection;
+  warnings: SearchWarning[];
+}
+
+export interface ConfirmSearchRequest {
+  confirmationId: string;
+  sessionId?: string;
+  editedIntent?: SearchIntent;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface SearchResponse {
   id: string;
   nlQuery: string;
@@ -54,6 +97,10 @@ export interface SearchResponse {
   chartType: ChartType;
   page: number | null;
   pageSize: number | null;
+  needsConfirmation?: boolean;
+  confirmation?: SearchConfirmation | null;
+  warnings?: SearchWarning[] | null;
+  selectedTemplate?: string | null;
 }
 
 export interface QueryHistoryItem {
@@ -68,9 +115,10 @@ export interface QueryHistoryItem {
 }
 
 export interface IngestResponse {
-  totalRows: number;
-  indexedRows: number;
-  failedRows: number;
-  indexName: string;
-  durationMs: number;
+  requestId: string;
+  fileName: string;
+  format: "jsonl" | "csv";
+  bytesAccepted: number;
+  status: "ACCEPTED" | string;
+  submittedAt: string;
 }

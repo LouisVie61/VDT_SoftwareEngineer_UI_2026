@@ -1,12 +1,13 @@
-import { HelpCircle, Moon, Sun, UserRound } from "lucide-react";
+import { HelpCircle, Moon, RotateCcw, Sun, UserRound } from "lucide-react";
 import type { Theme } from "../types";
 
 interface TopbarProps {
   theme: Theme;
   onToggleTheme: () => void;
+  onNewSession: () => void;
 }
 
-export function Topbar({ theme, onToggleTheme }: TopbarProps) {
+export function Topbar({ theme, onToggleTheme, onNewSession }: TopbarProps) {
   return (
     <header className="topbar">
       <div className="topbar-system-status">
@@ -28,9 +29,13 @@ export function Topbar({ theme, onToggleTheme }: TopbarProps) {
         <span className="dot" />
         <span>
           <small>LLM Provider</small>
-          Gemini + Groq
+          Intent extraction
         </span>
       </div>
+      <button className="secondary-button topbar-action" type="button" onClick={onNewSession}>
+        <RotateCcw size={16} />
+        New session
+      </button>
       <button className="icon-button" type="button" onClick={onToggleTheme} aria-label="Toggle theme">
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>

@@ -1,14 +1,11 @@
 import {
-  Bookmark,
-  ChevronDown,
   History,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-  Settings,
   ShieldCheck,
-  SlidersHorizontal,
 } from "lucide-react";
+import { RawLogUpload } from "./RawLogUpload";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,31 +36,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <History size={18} />
           <span className="sidebar-label">History</span>
         </a>
-        <a className="nav-item" href="#saved">
-          <Bookmark size={18} />
-          <span className="sidebar-label">Saved Queries</span>
-        </a>
-        <a className="nav-item" href="#playbooks">
-          <SlidersHorizontal size={18} />
-          <span className="sidebar-label">Playbooks</span>
-          <span className="soon sidebar-label">Soon</span>
-        </a>
-        <a className="nav-item" href="#settings">
-          <Settings size={18} />
-          <span className="sidebar-label">Settings</span>
-        </a>
       </nav>
 
       <div className="sidebar-spacer" />
 
-      <div className="profile">
-        <span className="avatar">AD</span>
-        <span className="sidebar-label">
-          <strong>Analyst</strong>
-          <small>analyst@demo.local</small>
-        </span>
-        <ChevronDown className="sidebar-label" size={16} />
-      </div>
+      <RawLogUpload compact={collapsed} />
     </aside>
   );
 }

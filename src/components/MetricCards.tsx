@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle2, Clock3, Database } from "lucide-react";
+import { Code2, Download, Play } from "lucide-react";
 import type { ChartType, SearchStatus } from "../types";
 import { chartLabel, formatDuration, formatNumber } from "../utils/format";
 
@@ -7,45 +7,55 @@ interface MetricCardsProps {
   elapsedMs: number | null;
   chartType: ChartType;
   status: SearchStatus;
+  dslVisible: boolean;
+  onToggleDsl: () => void;
+  onExport: () => void;
+  onRerun: () => void;
 }
 
-export function MetricCards({ totalCount, elapsedMs, chartType, status }: MetricCardsProps) {
-  const statusText = status === "loading" ? "Running" : status === "error" ? "Failed" : status === "success" ? "Success" : "Ready";
+export function MetricCards({
+  totalCount,
+  elapsedMs,
+  chartType,
+  status,
+  dslVisible,
+  onToggleDsl,
+  onExport,
+  onRerun,
+}: MetricCardsProps) {
+  const statusText =
+    status === "loading"
+      ? "Query running"
+      : status === "error"
+        ? "Query failed"
+        : status === "success"
+          ? "Query completed"
+          : "Ready";
+  const dslStatus = status === "success" ? "Elasticsearch DSL valid" : status === "loading" ? "Generating DSL" : "DSL waiting";
 
   return (
-    <section className="metric-grid">
-      <article className="metric-card">
-        <Database size={24} />
-        <div>
-          <span>Results</span>
-          <strong>{formatNumber(totalCount)}</strong>
-          <small>events</small>
-        </div>
-      </article>
-      <article className="metric-card">
-        <Clock3 size={24} />
-        <div>
-          <span>Execution Time</span>
-          <strong>{formatDuration(elapsedMs)}</strong>
-          <small>Runtime</small>
-        </div>
-      </article>
-      <article className="metric-card">
-        <BarChart3 size={24} />
-        <div>
-          <span>Chart Hint</span>
-          <strong>{chartLabel(chartType)}</strong>
-          <small>by aggregation</small>
-        </div>
-      </article>
-      <article className={`metric-card status-${status}`}>
-        <CheckCircle2 size={24} />
-        <div>
-          <span>Status</span>
-          <strong>{statusText}</strong>
-          <small>{status === "success" ? "Completed" : "Search service"}</small>
-        </div>
-      </article>
+    <section className={`query-runbar status-${status}`} aria-label="Query execution summary">
+      <div className="query-runbar-summary">
+        <strong>{statusText}</strong>
+        <span>{formatNumber(totalCount)} events</span>
+        <span>{formatDuration(elapsedMs)}</span>
+        <span>{chartLabel(chartType)}</span>
+        <span>{dslStatus}</span>
+      </div>
+      <div className="query-runbar-actions">
+        <button className="secondary-button compact" type="button" onClick={onToggleDsl}>
+          <Code2 size={15} />
+          {dslVisible ? "Hide DSL" : "Show DSL"}
+        </button>
+        <button className="secondary-button compact" type="button" onClick={onExport} disabled={status === "loading" || status === "idle"}>
+          <Download size={15} />
+          Export CSV
+        </button>
+        <button className="secondary-button compact" type="button" onClick={onRerun} disabled={status === "loading"}>
+          <Play size={15} />
+          Rerun
+        </button>
+      </div>
     </section>
   );
 }

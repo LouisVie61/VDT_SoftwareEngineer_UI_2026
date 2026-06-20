@@ -1,31 +1,45 @@
-import { Clock3, Code2, ExternalLink } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Code2, ExternalLink, Minus } from "lucide-react";
 import type { EventRow, QueryHistoryItem } from "../types";
-import { formatDateTime, formatNumber, severityLabel } from "../utils/format";
+import { chartLabel, formatDateTime, formatNumber, severityLabel } from "../utils/format";
 
 interface RightPanelProps {
   history: QueryHistoryItem[];
   selectedEvent: EventRow | null;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onHistoryClick: (question: string) => void;
 }
 
-export function RightPanel({ history, selectedEvent, onHistoryClick }: RightPanelProps) {
+export function RightPanel({ history, selectedEvent, collapsed, onToggleCollapsed, onHistoryClick }: RightPanelProps) {
+  if (collapsed) {
+    return (
+      <aside className="right-panel collapsed" aria-label="Investigation panel">
+        <button className="icon-button panel-collapse-button" type="button" onClick={onToggleCollapsed} aria-label="Expand investigation panel">
+          <ChevronsLeft size={17} />
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="right-panel">
       <section className="side-card" id="history">
         <header className="panel-header compact">
           <h2>Recent Queries</h2>
-          <button type="button">View all</button>
+          <button className="icon-button panel-collapse-button" type="button" onClick={onToggleCollapsed} aria-label="Minimize investigation panel">
+            <Minus size={17} />
+          </button>
         </header>
         <div className="history-list">
           {history.length ? (
             history.slice(0, 5).map((item) => (
               <button key={item.id} type="button" onClick={() => onHistoryClick(item.nlQuery)}>
-                <Clock3 size={15} />
                 <span>
                   <strong>{item.nlQuery}</strong>
-                  <small>{formatNumber(item.totalCount)} events</small>
+                  <small>
+                    {formatNumber(item.totalCount)} events - {chartLabel(item.chartType)}
+                  </small>
                 </span>
-                <em>{item.chartType.replace("_", " ")}</em>
               </button>
             ))
           ) : (
@@ -34,12 +48,17 @@ export function RightPanel({ history, selectedEvent, onHistoryClick }: RightPane
         </div>
       </section>
 
-      <section className="side-card details-card">
-        <header className="panel-header compact">
-          <h2>Event Details</h2>
-        </header>
-        {selectedEvent ? <EventDetails event={selectedEvent} /> : <div className="empty-state compact">Select an event to view details.</div>}
-      </section>
+      {selectedEvent ? (
+        <section className="side-card details-card">
+          <header className="panel-header compact">
+            <h2>Event Details</h2>
+            <button className="icon-button panel-collapse-button" type="button" onClick={onToggleCollapsed} aria-label="Minimize investigation panel">
+              <ChevronsRight size={17} />
+            </button>
+          </header>
+          <EventDetails event={selectedEvent} />
+        </section>
+      ) : null}
     </aside>
   );
 }

@@ -1,15 +1,32 @@
-import type { IngestResponse, QueryHistoryItem, SearchRequest, SearchResponse } from "../types";
+import type { ConfirmSearchRequest, IngestResponse, QueryHistoryItem, SearchRequest, SearchResponse } from "../types";
 import { apiRequest } from "./client";
 
 const DEFAULT_USER_ID = "soc-analyst-demo";
 
 export function searchEvents(payload: SearchRequest): Promise<SearchResponse> {
+  const page = payload.page ?? 0;
+  const pageSize = payload.pageSize ?? 50;
+
   return apiRequest<SearchResponse>("/api/search", {
     method: "POST",
     body: JSON.stringify({
-      page: 0,
-      pageSize: 10000,
       ...payload,
+      page,
+      pageSize,
+    }),
+  });
+}
+
+export function confirmSearch(payload: ConfirmSearchRequest): Promise<SearchResponse> {
+  const page = payload.page ?? 0;
+  const pageSize = payload.pageSize ?? 50;
+
+  return apiRequest<SearchResponse>("/api/search/confirm", {
+    method: "POST",
+    body: JSON.stringify({
+      ...payload,
+      page,
+      pageSize,
     }),
   });
 }

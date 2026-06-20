@@ -1,4 +1,4 @@
-import { BarChart3, Loader2, LockKeyhole, MoreVertical, UserRound } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Loader2, LockKeyhole, MoreVertical, UserRound } from "lucide-react";
 import type { AggregationRow, EventRow, SearchStatus } from "../types";
 import { formatDateTime, formatNumber, severityLabel } from "../utils/format";
 
@@ -7,16 +7,37 @@ interface ResultListProps {
   aggregations: AggregationRow[];
   totalCount: number;
   status: SearchStatus;
+  page: number;
+  pageSize: number;
   selectedId?: string | null;
   onSelect: (row: EventRow) => void;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
 }
 
-export function ResultList({ results, aggregations, totalCount, status, selectedId, onSelect }: ResultListProps) {
+export function ResultList({
+  results,
+  aggregations,
+  totalCount,
+  status,
+  page,
+  pageSize,
+  selectedId,
+  onSelect,
+  onPageChange,
+  onPageSizeChange,
+}: ResultListProps) {
   const isLoading = status === "loading";
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
+  const currentStart = totalCount === 0 ? 0 : page * pageSize + 1;
+  const currentEnd = Math.min(totalCount, page * pageSize + results.length);
+  const canPageResults = !isLoading && results.length > 0;
+  const canGoPrevious = canPageResults && page > 0;
+  const canGoNext = canPageResults && currentEnd < totalCount;
   const countLabel = isLoading
     ? "Waiting for query results"
     : results.length
-      ? `Showing ${formatNumber(results.length)} of ${formatNumber(totalCount)} events`
+      ? `Showing ${formatNumber(currentStart)}-${formatNumber(currentEnd)} of ${formatNumber(totalCount)} events`
       : aggregations.length
         ? `Showing ${formatNumber(aggregations.length)} buckets from ${formatNumber(totalCount)} matching events`
       : `Showing 0 of ${formatNumber(totalCount)} events`;
@@ -26,9 +47,14 @@ export function ResultList({ results, aggregations, totalCount, status, selected
       <header className="panel-header">
         <h2>Results</h2>
         <span className="sort-label">{countLabel}</span>
-        <span className="sort-label">
-          {isLoading ? "Running query" : results.length ? "Sort by: @timestamp (desc)" : "Grouped by aggregation"}
-        </span>
+        <label className="page-size-control">
+          <span>Rows</span>
+          <select value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))} disabled={isLoading}>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </label>
       </header>
       <div className="result-list">
         {isLoading ? (
@@ -66,6 +92,21 @@ export function ResultList({ results, aggregations, totalCount, status, selected
           <div className="empty-state">Run a search to inspect matching security events.</div>
         )}
       </div>
+      <footer className="results-pagination">
+        <span>
+          Page {formatNumber(page + 1)} of {formatNumber(pageCount)}
+        </span>
+        <div>
+          <button className="secondary-button compact" type="button" onClick={() => onPageChange(page - 1)} disabled={!canGoPrevious}>
+            <ChevronLeft size={15} />
+            Previous
+          </button>
+          <button className="secondary-button compact" type="button" onClick={() => onPageChange(page + 1)} disabled={!canGoNext}>
+            Next
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }
