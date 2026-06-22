@@ -29,7 +29,7 @@ export function Topbar({ theme, onToggleTheme, onNewSession }: TopbarProps) {
         <span className="dot" />
         <span>
           <small>LLM Provider</small>
-          Intent extraction
+          Gemini / Groq
         </span>
       </div>
       <button className="secondary-button topbar-action" type="button" onClick={onNewSession}>

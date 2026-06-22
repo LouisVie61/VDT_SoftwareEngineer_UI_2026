@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle } from "lucide-react";
-import { confirmSearch, exportSearchCsv, getSearchHistory, searchEvents } from "./api/search";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { confirmSearch, exportSearchCsv, getSearchHistory, getSearchSummary, searchEvents } from "./api/search";
 import { ChartPanel } from "./components/ChartPanel";
 import { ConfirmationCard } from "./components/ConfirmationCard";
 import { DslPanel } from "./components/DslPanel";
 import { MetricCards } from "./components/MetricCards";
 import { ResultList } from "./components/ResultList";
 import { RightPanel } from "./components/RightPanel";
+import { RequestConfirmationCard } from "./components/RequestConfirmationCard";
 import { SearchHero } from "./components/SearchHero";
 import { Sidebar } from "./components/Sidebar";
 import { SummaryPanel } from "./components/SummaryPanel";
+import { ToastStack, type ToastMessage } from "./components/ToastStack";
 import { Topbar } from "./components/Topbar";
 import { emptyDsl } from "./data/examples";
 import type {
@@ -24,13 +25,20 @@ import type {
   Theme,
 } from "./types";
 
-const DEFAULT_QUERY = "Đếm số lần login thất bại theo từng user trong 7 ngày qua";
+const DEFAULT_QUERY = "";
 const SESSION_STORAGE_KEY = "soc-search-session-id";
 const DEFAULT_PAGE_SIZE = 50;
 
 interface ConfirmedSearchContext {
   confirmationId: string;
   editedIntent: SearchIntent;
+}
+
+interface PendingSearchRequest {
+  question: string;
+  filters: SearchFilters;
+  page: number;
+  pageSize: number;
 }
 
 function getInitialTheme(): Theme {
@@ -50,6 +58,7 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [dslVisible, setDslVisible] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
   const [status, setStatus] = useState<SearchStatus>("idle");
@@ -59,6 +68,9 @@ export default function App() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [confirmedSearch, setConfirmedSearch] = useState<ConfirmedSearchContext | null>(null);
+  const [pendingSearch, setPendingSearch] = useState<PendingSearchRequest | null>(null);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const filterRerunTimer = useRef<number | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -72,8 +84,89 @@ export default function App() {
   const results = useMemo(() => normalizeResults(response?.results), [response]);
   const aggregations = useMemo(() => normalizeAggregations(response?.aggregations), [response]);
   const chartType = response?.chartType || "table";
-  const showFilters = !(status === "success" && response && !response.confirmation);
   const showRunBar = status !== "idle" || Boolean(response) || elapsedMs !== null;
+  const warningText = response?.warnings?.map((warning) => warning.message).filter(Boolean).join(" ") || "";
+
+  useEffect(() => {
+    if (error) {
+      pushToast("error", "Request failed", error);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (warningText) {
+      pushToast("warning", "Warning", warningText);
+    }
+  }, [warningText]);
+
+  useEffect(() => {
+    if (!response || status !== "success" || pendingSearch) {
+      return;
+    }
+    if (filterRerunTimer.current) {
+      window.clearTimeout(filterRerunTimer.current);
+    }
+    filterRerunTimer.current = window.setTimeout(() => {
+      void runSearch(0, pageSize, question, filters);
+    }, 500);
+    return () => {
+      if (filterRerunTimer.current) {
+        window.clearTimeout(filterRerunTimer.current);
+      }
+    };
+  }, [filters]);
+
+  useEffect(() => {
+    if (!response?.id || response.summaryStatus !== "PENDING") {
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+    const pollSummary = async () => {
+      attempts += 1;
+      try {
+        const summary = await getSearchSummary(response.id);
+        if (cancelled) {
+          return;
+        }
+        setResponse((current) => {
+          if (!current || current.id !== response.id) {
+            return current;
+          }
+          return {
+            ...current,
+            summary: summary.summary,
+            summaryStatus: summary.status,
+            chartType: summary.chartType || current.chartType,
+          };
+        });
+        if (summary.status === "PENDING" && attempts < 12) {
+          window.setTimeout(pollSummary, 1000);
+        }
+      } catch {
+        if (!cancelled && attempts < 3) {
+          window.setTimeout(pollSummary, 1000);
+        }
+      }
+    };
+
+    const timer = window.setTimeout(pollSummary, 600);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [response?.id, response?.summaryStatus]);
+
+  function pushToast(type: ToastMessage["type"], title: string, message: string) {
+    const toast: ToastMessage = {
+      id: `${type}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type,
+      title,
+      message,
+    };
+    setToasts((current) => [...current.slice(-3), toast]);
+  }
 
   async function refreshHistory() {
     try {
@@ -84,12 +177,28 @@ export default function App() {
     }
   }
 
-  async function runSearch(nextPage = 0, nextPageSize = pageSize, queryOverride?: string) {
+  function requestSearch(nextPage = 0, nextPageSize = pageSize, queryOverride?: string) {
     const trimmed = (queryOverride ?? question).trim();
     if (!trimmed) {
       return;
     }
 
+    setPendingSearch({
+      question: trimmed,
+      filters: { ...filters },
+      page: nextPage,
+      pageSize: nextPageSize,
+    });
+    setError(null);
+  }
+
+  async function runSearch(nextPage = 0, nextPageSize = pageSize, queryOverride?: string, filtersOverride = filters) {
+    const trimmed = (queryOverride ?? question).trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setPendingSearch(null);
     setPage(nextPage);
     setPageSize(nextPageSize);
     setConfirmedSearch(null);
@@ -101,7 +210,7 @@ export default function App() {
     const startedAt = performance.now();
 
     try {
-      const data = await searchEvents({ question: trimmed, page: nextPage, pageSize: nextPageSize, sessionId, ...activeFilters(filters) });
+      const data = await searchEvents({ question: trimmed, page: nextPage, pageSize: nextPageSize, sessionId, ...activeFilters(filtersOverride) });
       setResponse(data);
       setElapsedMs(performance.now() - startedAt);
       setStatus("success");
@@ -115,7 +224,11 @@ export default function App() {
 
   function handleHistoryClick(historyQuestion: string) {
     setQuestion(historyQuestion);
-    void runSearch(0, pageSize, historyQuestion);
+    requestSearch(0, pageSize, historyQuestion);
+  }
+
+  function handleFiltersChange(nextFilters: SearchFilters) {
+    setFilters(nextFilters);
   }
 
   async function handleExport() {
@@ -184,6 +297,7 @@ export default function App() {
     setPage(0);
     setPageSize(DEFAULT_PAGE_SIZE);
     setConfirmedSearch(null);
+    setPendingSearch(null);
     setStatus("idle");
   }
 
@@ -223,24 +337,22 @@ export default function App() {
               question={question}
               filters={filters}
               isLoading={status === "loading"}
-              showFilters={showFilters}
+              filtersCollapsed={filtersCollapsed}
               onQuestionChange={setQuestion}
-              onFiltersChange={setFilters}
+              onFiltersChange={handleFiltersChange}
               onResetFilters={() => setFilters({})}
-              onSubmit={() => void runSearch(0, pageSize)}
+              onToggleFilters={() => setFiltersCollapsed((current) => !current)}
+              onSubmit={() => requestSearch(0, pageSize)}
               onClear={() => setQuestion("")}
             />
-            {error ? (
-              <div className="error-banner">
-                <AlertCircle size={18} />
-                {error}
-              </div>
-            ) : null}
-            {response?.warnings?.length ? (
-              <div className="warning-banner">
-                <AlertCircle size={18} />
-                {response.warnings.map((warning) => warning.message).join(" ")}
-              </div>
+            {pendingSearch ? (
+              <RequestConfirmationCard
+                question={pendingSearch.question}
+                filters={pendingSearch.filters}
+                pageSize={pendingSearch.pageSize}
+                onCancel={() => setPendingSearch(null)}
+                onConfirm={() => void runSearch(pendingSearch.page, pendingSearch.pageSize, pendingSearch.question, pendingSearch.filters)}
+              />
             ) : null}
             <ConfirmationCard confirmation={response?.confirmation} status={status} onConfirm={handleConfirm} />
             {showRunBar ? (
@@ -252,12 +364,17 @@ export default function App() {
                 dslVisible={dslVisible}
                 onToggleDsl={() => setDslVisible((current) => !current)}
                 onExport={handleExport}
-                onRerun={() => void runSearch(0, pageSize)}
+                onRerun={() => requestSearch(0, pageSize)}
               />
             ) : null}
             <div className="workbench-grid">
               <div className={`left-stack ${dslVisible ? "" : "dsl-hidden"}`}>
-                <SummaryPanel summary={response?.summary || ""} />
+                <SummaryPanel
+                  summary={response?.summary}
+                  summaryStatus={response?.summaryStatus}
+                  hasResponse={Boolean(response)}
+                  isLoading={status === "loading"}
+                />
                 {dslVisible ? <DslPanel dsl={response?.generatedDsl || emptyDsl} status={status} /> : null}
               </div>
               <div className="right-stack">
@@ -294,13 +411,19 @@ export default function App() {
           />
         </main>
       </div>
+      <ToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );
 }
 
 function activeFilters(filters: SearchFilters): Partial<SearchRequest> {
   return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => typeof value === "string" && value.trim())
+    Object.entries(filters)
+      .filter(([, value]) => typeof value === "string" && value.trim())
+      .map(([key, value]) => {
+        const normalized = String(value).trim();
+        return [key, key === "severity" || key === "eventType" ? normalized.toLowerCase() : normalized];
+      })
   ) as Partial<SearchRequest>;
 }
 

@@ -42,6 +42,8 @@ export interface AggregationRow {
   aggregation?: string;
   key?: string | number | null;
   count?: number;
+  value?: number;
+  value_as_string?: string;
   [key: string]: unknown;
 }
 
@@ -91,6 +93,7 @@ export interface SearchResponse {
   nlQuery: string;
   generatedDsl: unknown;
   summary: string;
+  summaryStatus?: string | null;
   results: EventRow[] | unknown;
   aggregations: AggregationRow[] | unknown;
   totalCount: number;
@@ -101,6 +104,12 @@ export interface SearchResponse {
   confirmation?: SearchConfirmation | null;
   warnings?: SearchWarning[] | null;
   selectedTemplate?: string | null;
+}
+
+export interface SummaryResponse {
+  status: string;
+  summary: string;
+  chartType: ChartType;
 }
 
 export interface QueryHistoryItem {

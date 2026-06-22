@@ -1,5 +1,4 @@
 import {
-  History,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
@@ -31,10 +30,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <a className="nav-item active" href="#search">
           <Search size={18} />
           <span className="sidebar-label">Search</span>
-        </a>
-        <a className="nav-item" href="#history">
-          <History size={18} />
-          <span className="sidebar-label">History</span>
         </a>
       </nav>
 

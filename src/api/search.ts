@@ -1,4 +1,4 @@
-import type { ConfirmSearchRequest, IngestResponse, QueryHistoryItem, SearchRequest, SearchResponse } from "../types";
+import type { ConfirmSearchRequest, IngestResponse, QueryHistoryItem, SearchRequest, SearchResponse, SummaryResponse } from "../types";
 import { apiRequest } from "./client";
 
 const DEFAULT_USER_ID = "soc-analyst-demo";
@@ -38,6 +38,10 @@ export function getSearchHistory(limit = 20, userId = DEFAULT_USER_ID): Promise<
   });
 
   return apiRequest<QueryHistoryItem[]>(`/api/search/history?${params.toString()}`);
+}
+
+export function getSearchSummary(queryId: string): Promise<SummaryResponse> {
+  return apiRequest<SummaryResponse>(`/api/search/${queryId}/summary`);
 }
 
 export async function exportSearchCsv(queryId: string): Promise<void> {

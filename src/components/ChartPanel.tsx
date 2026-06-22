@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Label,
   Line,
   LineChart,
   Pie,
@@ -95,6 +96,9 @@ function LoadingChart() {
 
 function ChartRenderer({ chartType, data, height }: { chartType: ChartType; data: Array<{ name: string; count: number }>; height: number }) {
   const chartData = chartType === "line_chart" ? [...data].sort((a, b) => Date.parse(a.name) - Date.parse(b.name)) : data;
+  const formatAxisName = (name: string) => (name.length > 18 ? `${name.slice(0, 15)}...` : name);
+  const xAxisLabel = chartType === "line_chart" ? "Time bucket (timestamp)" : "Bucket key (value)";
+  const yAxisLabel = "Event count (events)";
 
   if (chartType === "pie_chart") {
     return (
@@ -114,10 +118,14 @@ function ChartRenderer({ chartType, data, height }: { chartType: ChartType; data
   if (chartType === "line_chart") {
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+        <LineChart data={chartData} margin={{ top: 8, right: 18, bottom: 48, left: 18 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" minTickGap={18} />
-          <YAxis allowDecimals={false} />
+          <XAxis dataKey="name" minTickGap={24} tickMargin={10} tickFormatter={formatAxisName}>
+            <Label value={xAxisLabel} position="insideBottom" offset={-34} />
+          </XAxis>
+          <YAxis allowDecimals={false}>
+            <Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-4} />
+          </YAxis>
           <Tooltip />
           <Line type="monotone" dataKey="count" stroke="#4f6bff" strokeWidth={3} dot />
         </LineChart>
@@ -127,10 +135,14 @@ function ChartRenderer({ chartType, data, height }: { chartType: ChartType; data
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+      <BarChart data={chartData} margin={{ top: 8, right: 18, bottom: 52, left: 18 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" minTickGap={14} />
-        <YAxis allowDecimals={false} />
+        <XAxis dataKey="name" minTickGap={22} interval="preserveStartEnd" tickMargin={10} tickFormatter={formatAxisName}>
+          <Label value={xAxisLabel} position="insideBottom" offset={-36} />
+        </XAxis>
+        <YAxis allowDecimals={false}>
+          <Label value={yAxisLabel} angle={-90} position="insideLeft" offset={-4} />
+        </YAxis>
         <Tooltip />
         <Bar dataKey="count" radius={[6, 6, 0, 0]}>
           {chartData.map((entry, index) => (

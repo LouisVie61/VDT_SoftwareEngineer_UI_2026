@@ -1,4 +1,4 @@
-import { BarChart3, ChevronLeft, ChevronRight, Loader2, LockKeyhole, MoreVertical, UserRound } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, LockKeyhole, MoreVertical, UserRound } from "lucide-react";
 import type { AggregationRow, EventRow, SearchStatus } from "../types";
 import { formatDateTime, formatNumber, severityLabel } from "../utils/format";
 
@@ -28,19 +28,19 @@ export function ResultList({
   onPageSizeChange,
 }: ResultListProps) {
   const isLoading = status === "loading";
-  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
-  const currentStart = totalCount === 0 ? 0 : page * pageSize + 1;
-  const currentEnd = Math.min(totalCount, page * pageSize + results.length);
-  const canPageResults = !isLoading && results.length > 0;
+  const hasAggregationOnlyResponse = !results.length && aggregations.length > 0 && totalCount > 0;
+  const rowTotal = totalCount;
+  const pageCount = Math.max(1, Math.ceil(rowTotal / pageSize));
+  const currentStart = rowTotal === 0 ? 0 : page * pageSize + 1;
+  const currentEnd = Math.min(rowTotal, page * pageSize + results.length);
+  const canPageResults = !isLoading && totalCount > 0;
   const canGoPrevious = canPageResults && page > 0;
-  const canGoNext = canPageResults && currentEnd < totalCount;
+  const canGoNext = canPageResults && currentEnd < rowTotal;
   const countLabel = isLoading
     ? "Waiting for query results"
     : results.length
       ? `Showing ${formatNumber(currentStart)}-${formatNumber(currentEnd)} of ${formatNumber(totalCount)} events`
-      : aggregations.length
-        ? `Showing ${formatNumber(aggregations.length)} buckets from ${formatNumber(totalCount)} matching events`
-      : `Showing 0 of ${formatNumber(totalCount)} events`;
+      : `Showing 0 of ${formatNumber(rowTotal)} events`;
 
   return (
     <section className="results-panel">
@@ -86,8 +86,10 @@ export function ResultList({
               </button>
             );
           })
-        ) : aggregations.length ? (
-          aggregations.map((row, index) => <AggregationItem key={`${row.aggregation || "agg"}-${String(row.key ?? index)}`} row={row} />)
+        ) : hasAggregationOnlyResponse ? (
+          <div className="empty-state">
+            This query returned aggregation buckets but no event rows. The backend should return hits for this page.
+          </div>
         ) : (
           <div className="empty-state">Run a search to inspect matching security events.</div>
         )}
@@ -131,26 +133,6 @@ function LoadingResults() {
           <span className="skeleton-dot" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function AggregationItem({ row }: { row: AggregationRow }) {
-  const label = String(row.key ?? row.value_as_string ?? "unknown");
-  const metric = row.count ?? row.value ?? 0;
-
-  return (
-    <div className="result-item aggregation-item">
-      <span className="event-icon aggregation-icon">
-        <BarChart3 size={22} />
-      </span>
-      <span className="result-body">
-        <strong>{label}</strong>
-        <small>{row.aggregation || "aggregation"}</small>
-        <em>Aggregated query result bucket</em>
-      </span>
-      <span className="badge aggregation-badge">{formatNumber(Number(metric))}</span>
-      <MoreVertical size={18} />
     </div>
   );
 }

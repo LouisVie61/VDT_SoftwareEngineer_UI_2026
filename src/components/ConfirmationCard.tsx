@@ -14,7 +14,15 @@ export function ConfirmationCard({ confirmation, status, onConfirm }: Confirmati
   const [intent, setIntent] = useState<SearchIntent | null>(null);
 
   useEffect(() => {
-    setIntent(confirmation?.intent ? { ...confirmation.intent, filters: { ...(confirmation.intent.filters || {}) } } : null);
+    setIntent(
+      confirmation?.intent
+        ? {
+            ...confirmation.intent,
+            topN: confirmation.intent.topN ?? confirmation.templateSelection.size ?? 100,
+            filters: { ...(confirmation.intent.filters || {}) },
+          }
+        : null
+    );
   }, [confirmation]);
 
   if (!confirmation || !intent) {
@@ -41,7 +49,7 @@ export function ConfirmationCard({ confirmation, status, onConfirm }: Confirmati
           <span>Template</span>
           <strong>{confirmation.templateSelection.type.replace("_", " ")}</strong>
         </div>
-        <label>
+        <label className="group-by-field">
           <span>Group by</span>
           <select value={intent.groupBy || ""} onChange={(event) => update("groupBy", event.target.value || null)}>
             <option value="">None</option>
@@ -58,8 +66,8 @@ export function ConfirmationCard({ confirmation, status, onConfirm }: Confirmati
             type="number"
             min={1}
             max={100}
-            value={intent.topN ?? 10}
-            onChange={(event) => update("topN", Number(event.target.value) || 10)}
+            value={intent.topN ?? 100}
+            onChange={(event) => update("topN", Number(event.target.value) || 100)}
           />
         </label>
       </div>

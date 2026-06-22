@@ -1,4 +1,4 @@
-import { ChevronsLeft, ChevronsRight, Code2, ExternalLink, Minus } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Minus } from "lucide-react";
 import type { EventRow, QueryHistoryItem } from "../types";
 import { chartLabel, formatDateTime, formatNumber, severityLabel } from "../utils/format";
 
@@ -82,11 +82,6 @@ function EventDetails({ event }: { event: EventRow }) {
           <strong>{value}</strong>
         </div>
       ))}
-      <button className="secondary-button full" type="button">
-        <Code2 size={16} />
-        View full raw event
-        <ExternalLink size={14} />
-      </button>
     </div>
   );
 }
