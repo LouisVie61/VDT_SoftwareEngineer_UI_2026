@@ -8,7 +8,16 @@ interface ConfirmationCardProps {
   onConfirm: (intent: SearchIntent) => void;
 }
 
-const GROUPABLE_FIELDS = ["source", "severity", "event_type", "user", "host", "ip"];
+const GROUPABLE_FIELDS = ["source", "severity", "event_type", "action", "user", "host", "ip"];
+const FILTER_LABELS: Record<string, string> = {
+  from: "From",
+  to: "To",
+  severity: "Severity",
+  eventType: "Event type",
+  user: "User",
+  host: "Host",
+  ip: "IP",
+};
 
 export function ConfirmationCard({ confirmation, status, onConfirm }: ConfirmationCardProps) {
   const [intent, setIntent] = useState<SearchIntent | null>(null);
@@ -32,6 +41,7 @@ export function ConfirmationCard({ confirmation, status, onConfirm }: Confirmati
   const update = <K extends keyof SearchIntent>(field: K, value: SearchIntent[K]) => {
     setIntent((current) => (current ? { ...current, [field]: value } : current));
   };
+  const requestFilters = Object.entries(confirmation.requestFilters || {}).filter(([, value]) => value?.trim());
 
   return (
     <section className="confirmation-card">
@@ -64,13 +74,25 @@ export function ConfirmationCard({ confirmation, status, onConfirm }: Confirmati
           <span>Top N</span>
           <input
             type="number"
-            min={1}
+            min={0}
             max={100}
             value={intent.topN ?? 100}
-            onChange={(event) => update("topN", Number(event.target.value) || 100)}
+            onChange={(event) => {
+              const nextTopN = Number(event.target.value);
+              update("topN", Number.isFinite(nextTopN) && nextTopN >= 0 ? Math.min(nextTopN, 100) : 0);
+            }}
           />
         </label>
       </div>
+      {requestFilters.length ? (
+        <div className="request-filter-list" aria-label="Applied request filters">
+          {requestFilters.map(([key, value]) => (
+            <span key={key}>
+              {FILTER_LABELS[key] || key}: {value}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {confirmation.warnings?.length ? (
         <ul className="confirmation-warnings">
           {confirmation.warnings.map((warning) => (

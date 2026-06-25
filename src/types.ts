@@ -78,6 +78,7 @@ export interface SearchConfirmation {
   intent: SearchIntent;
   templateSelection: TemplateSelection;
   warnings: SearchWarning[];
+  requestFilters?: Record<string, string> | null;
 }
 
 export interface ConfirmSearchRequest {
