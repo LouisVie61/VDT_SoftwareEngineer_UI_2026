@@ -178,38 +178,50 @@ function AggregationTable({ rows }: { rows: AggregationRow[] }) {
 }
 
 function EventTable({ rows }: { rows: EventRow[] }) {
+  const preferredColumns = ["timestamp", "host", "user", "ip", "src_ip", "dst_ip", "event_type", "severity", "source", "action", "message", "raw"];
+  const dynamicColumns = Array.from(new Set(rows.flatMap((row) => Object.keys(row).filter((key) => key !== "id"))));
+  const columns = [
+    ...preferredColumns.filter((column) => dynamicColumns.includes(column)),
+    ...dynamicColumns.filter((column) => !preferredColumns.includes(column)),
+  ];
+
   return (
     <table>
       <thead>
         <tr>
-          <th>Timestamp</th>
-          <th>Host</th>
-          <th>User</th>
-          <th>IP</th>
-          <th>Type</th>
-          <th>Severity</th>
+          {columns.length ? columns.map((column) => <th key={column}>{column.replaceAll("_", " ")}</th>) : <th>Result</th>}
         </tr>
       </thead>
       <tbody>
         {rows.length ? (
           rows.map((row, index) => (
             <tr key={String(row.id || index)}>
-              <td>{formatDateTime(row.timestamp)}</td>
-              <td>{row.host || "-"}</td>
-              <td>{row.user || "-"}</td>
-              <td>{row.ip || row.src_ip || "-"}</td>
-              <td>{row.event_type || "-"}</td>
-              <td>{row.severity || "-"}</td>
+              {columns.map((column) => (
+                <td key={column}>{formatCellValue(column, row[column])}</td>
+              ))}
             </tr>
           ))
         ) : (
           <tr>
-            <td colSpan={6}>Run a search to populate table results.</td>
+            <td colSpan={Math.max(columns.length, 1)}>Run a search to populate table results.</td>
           </tr>
         )}
       </tbody>
     </table>
   );
+}
+
+function formatCellValue(column: string, value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  if (column === "timestamp" && typeof value === "string") {
+    return formatDateTime(value);
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 function EmptyChart({ chartType }: { chartType: ChartType }) {

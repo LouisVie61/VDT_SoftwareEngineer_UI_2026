@@ -1337,13 +1337,17 @@ button {
 
 table {
   width: 100%;
+  min-width: max-content;
   border-collapse: collapse;
 }
 
 th,
 td {
+  max-width: 420px;
   padding: 12px 14px;
+  overflow: hidden;
   text-align: left;
+  text-overflow: ellipsis;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }

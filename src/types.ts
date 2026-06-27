@@ -57,6 +57,10 @@ export interface SearchIntent {
   metric?: string | null;
   topN?: number | null;
   timeBucket?: string | null;
+  recurringTime?: {
+    mode?: string | null;
+    month?: number | null;
+  } | null;
   overrideIntent?: string | null;
   overrideReason?: string | null;
 }

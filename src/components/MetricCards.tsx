@@ -7,6 +7,7 @@ interface MetricCardsProps {
   elapsedMs: number | null;
   chartType: ChartType;
   status: SearchStatus;
+  filtersDirty: boolean;
   dslVisible: boolean;
   onToggleDsl: () => void;
   onExport: () => void;
@@ -18,13 +19,16 @@ export function MetricCards({
   elapsedMs,
   chartType,
   status,
+  filtersDirty,
   dslVisible,
   onToggleDsl,
   onExport,
   onRerun,
 }: MetricCardsProps) {
   const statusText =
-    status === "loading"
+    filtersDirty
+      ? "Filters changed"
+      : status === "loading"
       ? "Query running"
       : status === "error"
         ? "Query failed"
@@ -41,6 +45,7 @@ export function MetricCards({
         <span>{formatDuration(elapsedMs)}</span>
         <span>{chartLabel(chartType)}</span>
         <span>{dslStatus}</span>
+        {filtersDirty ? <span>Rerun to apply filters</span> : null}
       </div>
       <div className="query-runbar-actions">
         <button className="secondary-button compact" type="button" onClick={onToggleDsl}>
@@ -53,7 +58,7 @@ export function MetricCards({
         </button>
         <button className="secondary-button compact" type="button" onClick={onRerun} disabled={status === "loading"}>
           <Play size={15} />
-          Rerun
+          {filtersDirty ? "Apply filters" : "Rerun"}
         </button>
       </div>
     </section>

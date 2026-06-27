@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { confirmSearch, exportSearchCsv, getSearchHistory, getSearchSummary, searchEvents } from "./api/search";
 import { ChartPanel } from "./components/ChartPanel";
 import { ConfirmationCard } from "./components/ConfirmationCard";
@@ -32,6 +32,7 @@ const DEFAULT_PAGE_SIZE = 50;
 interface ConfirmedSearchContext {
   confirmationId: string;
   editedIntent: SearchIntent;
+  filters: SearchFilters;
 }
 
 interface PendingSearchRequest {
@@ -69,8 +70,8 @@ export default function App() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [confirmedSearch, setConfirmedSearch] = useState<ConfirmedSearchContext | null>(null);
   const [pendingSearch, setPendingSearch] = useState<PendingSearchRequest | null>(null);
+  const [appliedFiltersSignature, setAppliedFiltersSignature] = useState(filterSignature({}));
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const filterRerunTimer = useRef<number | null>(null);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -99,22 +100,7 @@ export default function App() {
     }
   }, [warningText]);
 
-  useEffect(() => {
-    if (!response || status !== "success" || pendingSearch) {
-      return;
-    }
-    if (filterRerunTimer.current) {
-      window.clearTimeout(filterRerunTimer.current);
-    }
-    filterRerunTimer.current = window.setTimeout(() => {
-      void runSearch(0, pageSize, question, filters);
-    }, 500);
-    return () => {
-      if (filterRerunTimer.current) {
-        window.clearTimeout(filterRerunTimer.current);
-      }
-    };
-  }, [filters]);
+  const filtersDirty = Boolean(response) && filterSignature(filters) !== appliedFiltersSignature;
 
   useEffect(() => {
     if (!response?.id || response.summaryStatus !== "PENDING") {
@@ -212,6 +198,7 @@ export default function App() {
     try {
       const data = await searchEvents({ question: trimmed, page: nextPage, pageSize: nextPageSize, sessionId, ...activeFilters(filtersOverride) });
       setResponse(data);
+      setAppliedFiltersSignature(filterSignature(filtersOverride));
       setElapsedMs(performance.now() - startedAt);
       setStatus("success");
       await refreshHistory();
@@ -251,6 +238,7 @@ export default function App() {
       {
         confirmationId: response.confirmation.confirmationId,
         editedIntent,
+        filters: (response.confirmation.requestFilters || filters) as SearchFilters,
       },
       0,
       pageSize
@@ -276,6 +264,7 @@ export default function App() {
         pageSize: nextPageSize,
       });
       setResponse(data);
+      setAppliedFiltersSignature(filterSignature(context.filters));
       setElapsedMs(performance.now() - startedAt);
       setStatus("success");
       await refreshHistory();
@@ -302,6 +291,10 @@ export default function App() {
   }
 
   function handleResultPageChange(nextPage: number) {
+    if (filtersDirty) {
+      requestSearch(nextPage, pageSize);
+      return;
+    }
     if (confirmedSearch) {
       void runConfirmedSearch(confirmedSearch, nextPage, pageSize);
       return;
@@ -310,6 +303,10 @@ export default function App() {
   }
 
   function handleResultPageSizeChange(nextPageSize: number) {
+    if (filtersDirty) {
+      requestSearch(0, nextPageSize);
+      return;
+    }
     if (confirmedSearch) {
       void runConfirmedSearch(confirmedSearch, 0, nextPageSize);
       return;
@@ -361,6 +358,7 @@ export default function App() {
                 elapsedMs={elapsedMs}
                 chartType={chartType}
                 status={status}
+                filtersDirty={filtersDirty}
                 dslVisible={dslVisible}
                 onToggleDsl={() => setDslVisible((current) => !current)}
                 onExport={handleExport}
@@ -425,6 +423,10 @@ function activeFilters(filters: SearchFilters): Partial<SearchRequest> {
         return [key, key === "severity" || key === "eventType" ? normalized.toLowerCase() : normalized];
       })
   ) as Partial<SearchRequest>;
+}
+
+function filterSignature(filters: SearchFilters): string {
+  return JSON.stringify(activeFilters(filters));
 }
 
 function getSessionId(): string {

@@ -47,7 +47,7 @@ export function SearchHero({
         <input
           value={question}
           onChange={(event) => onQuestionChange(event.target.value)}
-          placeholder="Nhập câu hỏi tìm kiếm..."
+          placeholder="Nhap cau hoi tim kiem..."
         />
         {question ? (
           <button className="ghost-icon" type="button" onClick={onClear} aria-label="Clear query">
