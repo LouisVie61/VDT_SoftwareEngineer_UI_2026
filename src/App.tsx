@@ -28,6 +28,8 @@ import type {
 const DEFAULT_QUERY = "";
 const SESSION_STORAGE_KEY = "soc-search-session-id";
 const DEFAULT_PAGE_SIZE = 50;
+const MAX_SUMMARY_POLL_ATTEMPTS = 12;
+const INITIAL_SUMMARY_POLL_DELAY_MS = 600;
 
 interface ConfirmedSearchContext {
   confirmationId: string;
@@ -116,28 +118,29 @@ export default function App() {
         if (cancelled) {
           return;
         }
+        const timedOut = summary.status === "PENDING" && attempts >= MAX_SUMMARY_POLL_ATTEMPTS;
         setResponse((current) => {
           if (!current || current.id !== response.id) {
             return current;
           }
           return {
             ...current,
-            summary: summary.summary,
-            summaryStatus: summary.status,
+            summary: timedOut ? "Summary generation timed out; Elasticsearch results remain available." : summary.summary,
+            summaryStatus: timedOut ? "FAILED" : summary.status,
             chartType: summary.chartType || current.chartType,
           };
         });
-        if (summary.status === "PENDING" && attempts < 12) {
-          window.setTimeout(pollSummary, 1000);
+        if (summary.status === "PENDING" && !timedOut) {
+          window.setTimeout(pollSummary, summaryPollDelay(attempts));
         }
       } catch {
         if (!cancelled && attempts < 3) {
-          window.setTimeout(pollSummary, 1000);
+          window.setTimeout(pollSummary, summaryPollDelay(attempts));
         }
       }
     };
 
-    const timer = window.setTimeout(pollSummary, 600);
+    const timer = window.setTimeout(pollSummary, INITIAL_SUMMARY_POLL_DELAY_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
@@ -412,6 +415,10 @@ export default function App() {
       <ToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((toast) => toast.id !== id))} />
     </div>
   );
+}
+
+function summaryPollDelay(attempt: number): number {
+  return Math.min(1000 + Math.max(0, attempt - 1) * 500, 3000);
 }
 
 function activeFilters(filters: SearchFilters): Partial<SearchRequest> {
